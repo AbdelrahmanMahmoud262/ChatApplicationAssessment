@@ -6,7 +6,6 @@ import com.androdevelopment.data.remote.entity.MessageRecipient
 import com.androdevelopment.data.repository.source.MessageDataSource
 import com.androdevelopment.data.utlis.Constants
 import com.androdevelopment.data.utlis.SharedPreferenceManger
-import com.androdevelopment.domain.entity.Message
 import com.androdevelopment.domain.entity.Result
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.QuerySnapshot
@@ -19,8 +18,6 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.channelFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -60,34 +57,25 @@ class MessageDataSourceImpl @Inject constructor(
                     val messageIds = messagesRecipients.map { it.messageId }
                     Log.e("ids", messageIds.toString())
                     val messages = mutableListOf<MessageEntity>()
-//                    messageIds.forEach { id ->
-//                        getMessage(id).let { message ->
-//                            scope.launch {
-//                                message.collect{ messageEntity ->
-//                                    if (messageEntity != null) {
-//                                        messages.add(messageEntity)
-//                                        send(messages)
-//                                    }
-//                                }
-//                            }
-//                        }
-//                    }
+                    messageIds.forEach { id ->
+                        getMessage(id,object:MessageCallback{
+                            override fun onMessageReceived(message: MessageEntity?) {
+                                if (message != null) {
+                                    messages.add(message)
+                                }
 
-                    val deferredMessages = messageIds.map { id ->
-                       async { // Use async to fetch messages concurrently
-                            getMessage(id).collect { messageEntity ->
-                                if (messageEntity != null) {
-                                    messages.add(messageEntity)
+                                if (messages.size == messageIds.size){
+                                    scope.launch {
+                                        send(messages)
+                                    }
                                 }
                             }
-                        }
+                            override fun onError(exception: Exception) {
+                                cancel(message = "Error fetching messages", cause = exception)
+                            }
+                        })
                     }
 
-                    scope.launch {
-                        deferredMessages.awaitAll()
-                        Log.e("messagesDataSource", messages.toString())
-                        send(messages)
-                    }
                     Log.e("messagesDataSource", messages.toString())
 
                 } else {
@@ -118,14 +106,25 @@ class MessageDataSourceImpl @Inject constructor(
                 if (!messagesRecipients.isNullOrEmpty()) {
                     val messageIds = messagesRecipients.map { it.messageId }
                     Log.e("ids", messageIds.toString())
-                    messageIds.forEach {
-                        getMessage(it)?.let { message ->
-//                            scope.launch {
-//                                send(listOf(message))
-//                            }
-                        }
-                    }
+                    val messages = mutableListOf<MessageEntity>()
+                    messageIds.forEach { id ->
+                        getMessage(id,object:MessageCallback{
+                            override fun onMessageReceived(message: MessageEntity?) {
+                                if (message != null) {
+                                    messages.add(message)
+                                }
 
+                                if (messages.size == messageIds.size){
+                                    scope.launch {
+                                        send(messages)
+                                    }
+                                }
+                            }
+                            override fun onError(exception: Exception) {
+                                cancel(message = "Error fetching messages", cause = exception)
+                            }
+                        })
+                    }
                 } else {
                     Log.e("emtpy", "empty")
                 }
@@ -210,35 +209,37 @@ class MessageDataSourceImpl @Inject constructor(
         }
     }
 
-    private fun getMessage(messageId: String): Flow<MessageEntity?> = callbackFlow {
+    interface MessageCallback {
+        fun onMessageReceived(message: MessageEntity?)
+        fun onError(exception: Exception)
+    }
+
+    private fun getMessage(messageId: String, callback: MessageCallback) {
         Log.e("getMessage", "getting a Message")
 
         db.collection(Constants.MESSAGE_COLLECTION)
             .whereEqualTo(Constants.ID, messageId)
             .limit(1)
             .get()
-            .addOnSuccessListener {querySnapshot: QuerySnapshot? ->
-                Log.e("success", "successs $messageId")
-                scopeFlow.launch {
-                    val item = querySnapshot?.documents?.mapNotNull {
-                        Log.e("converting", "converting ${it.get("id")}")
-                        MessageEntity(
-                            id = it.getString(Constants.ID) ?: "",
-                            subject = it.getString("subject") ?: "",
-                            creatorId = it.getString("creatorId") ?: "",
-                            body = it.getString("body") ?: "",
-                            dateCreated = (it.get("dateCreated") ?: "").toString(),
-                            isRead = (it.get("read") as Long).toInt()
-                        )
-                    }
-                    send(item?.firstOrNull())
-                }
+            .addOnSuccessListener { querySnapshot ->
+                Log.e("success", "success $messageId")
+                val item = querySnapshot?.documents?.mapNotNull {
+                    Log.e("converting", "converting ${it.get("id")}")
+                    MessageEntity(
+                        id = it.getString(Constants.ID) ?: "",
+                        subject = it.getString("subject") ?: "",
+                        creatorId = it.getString("creatorId") ?: "",
+                        body = it.getString("body") ?: "",
+                        dateCreated = (it.get("dateCreated") ?: "").toString(),
+                        isRead = (it.get("read") as Long).toInt()
+                    )
+                }?.firstOrNull()
+                callback.onMessageReceived(item) // Notify the callback with the result
             }
-
-        awaitClose {
-            scopeFlow.cancel()
-        }
+            .addOnFailureListener { exception ->
+                Log.e("error", "error getting message $messageId", exception)
+                callback.onError(exception) // Notify the callback with the error
+            }
     }
-
 
 }
