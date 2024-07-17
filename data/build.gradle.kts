@@ -5,6 +5,8 @@ plugins {
 
     alias(libs.plugins.google.dagger.hilt.android)
     alias(libs.plugins.kotlin.kapt)
+
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -42,6 +44,8 @@ kapt{
 
 dependencies {
 
+    implementation(project(":domain"))
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
@@ -50,7 +54,10 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 
-
+    // Hilt
     implementation (libs.hilt.android)
     kapt (libs.hilt.compiler)
+
+    // Serialization
+    implementation(libs.kotlin.serialization.json)
 }

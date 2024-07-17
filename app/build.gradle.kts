@@ -4,6 +4,8 @@ plugins {
 
     alias(libs.plugins.google.dagger.hilt.android)
     alias(libs.plugins.kotlin.kapt)
+
+    alias(libs.plugins.google.gms.google.services)
 }
 
 android {
@@ -56,6 +58,10 @@ kapt{
     correctErrorTypes = true
 }
 
+hilt{
+    enableAggregatingTask = false
+}
+
 dependencies {
 
     implementation(project(":domain"))
@@ -77,6 +83,7 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 
+    implementation(libs.androidx.hilt.navigation.compose)
     implementation (libs.hilt.android)
     kapt (libs.hilt.compiler)
 }
