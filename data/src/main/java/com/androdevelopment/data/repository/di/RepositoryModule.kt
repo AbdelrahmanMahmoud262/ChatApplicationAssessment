@@ -1,7 +1,9 @@
 package com.androdevelopment.data.repository.di
 
+import com.androdevelopment.data.repository.repository.HomeRepositoryImpl
 import com.androdevelopment.data.repository.repository.MessageRepositoryImpl
 import com.androdevelopment.data.repository.repository.UserRepositoryImpl
+import com.androdevelopment.domain.repository.HomeRepository
 import com.androdevelopment.domain.repository.MessageRepository
 import com.androdevelopment.domain.repository.UserRepository
 import dagger.Binds
@@ -19,4 +21,8 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindUserRepository(userRepositoryImpl: UserRepositoryImpl): UserRepository
+
+    @Binds
+    abstract fun bindHomeRepository(homeRepositoryImpl: HomeRepositoryImpl): HomeRepository
+
 }

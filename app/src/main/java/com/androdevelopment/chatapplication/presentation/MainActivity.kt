@@ -1,6 +1,5 @@
-package com.androdevelopment.chatapplication
+package com.androdevelopment.chatapplication.presentation
 
-import android.icu.text.DateFormat
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -30,8 +29,6 @@ import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import java.time.OffsetDateTime
-import java.time.format.DateTimeFormatter
-import java.util.Date
 import java.util.UUID
 import javax.inject.Inject
 import kotlin.random.Random
@@ -44,27 +41,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             ChatApplicationTheme {
-                val viewModel:testViewModel = hiltViewModel()
-
-                LaunchedEffect(viewModel.messages) {
-                    Log.e("messages", viewModel.messages.toString())
-                }
-
-                LazyColumn(modifier = Modifier.padding(16.dp)) {
-                    items(viewModel.messages.sortedBy { it.dateCreated }) {
-                        Text(text = it.body)
-                    }
-
-                    item {
-                        Button(
-                            onClick = {
-                                viewModel.sendMessage(Random.nextInt().toString(),viewModel.user2)
-                            }
-                        ) {
-                            Text("Send")
-                        }
-                    }
-                }
+                ChatApp()
             }
         }
     }
@@ -78,6 +55,7 @@ class testViewModel @Inject constructor(
 ):ViewModel(){
 
     val user2 = "fc752be8-cde0-4567-897d-8495e2e0b9f1"
+    val user1 = "b9010456-ead9-429f-aad7-5c79e4179ecf"
 
     var messages by mutableStateOf<List<Message>>(emptyList())
         private set
@@ -85,6 +63,8 @@ class testViewModel @Inject constructor(
     init {
 
         viewModelScope.launch {
+
+            sharedPreferenceManger.userId = user1
 
             getMessages()
 

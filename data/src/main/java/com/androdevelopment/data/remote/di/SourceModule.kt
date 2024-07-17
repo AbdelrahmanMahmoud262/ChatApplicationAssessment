@@ -1,7 +1,9 @@
 package com.androdevelopment.data.remote.di
 
+import com.androdevelopment.data.remote.source.HomeDataSourceImpl
 import com.androdevelopment.data.remote.source.MessageDataSourceImpl
 import com.androdevelopment.data.remote.source.UserDataSourceImpl
+import com.androdevelopment.data.repository.source.HomeDataSource
 import com.androdevelopment.data.repository.source.MessageDataSource
 import com.androdevelopment.data.repository.source.UserDataSource
 import dagger.Binds
@@ -19,4 +21,8 @@ abstract class SourceModule {
 
     @Binds
     abstract fun bindUserDataSource(userDataSourceImpl: UserDataSourceImpl): UserDataSource
+
+    @Binds
+    abstract fun bindHomeDataSource(homeDataSourceImpl: HomeDataSourceImpl): HomeDataSource
+
 }

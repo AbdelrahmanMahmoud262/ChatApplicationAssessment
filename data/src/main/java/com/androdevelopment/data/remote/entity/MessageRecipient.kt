@@ -7,6 +7,7 @@ import java.util.UUID
 data class MessageRecipient(
     val id: String = UUID.randomUUID().toString(),
     val recipientId: String,
+    val creatorId:String,
     val messageId: String,
     val isRead: Int,
 )

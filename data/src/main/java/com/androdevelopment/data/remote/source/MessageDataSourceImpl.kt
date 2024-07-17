@@ -12,8 +12,6 @@ import com.google.firebase.firestore.QuerySnapshot
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -35,6 +33,7 @@ class MessageDataSourceImpl @Inject constructor(
         val recipientListener = db
             .collection(Constants.MESSAGE_RECIPIENT_COLLECTION)
             .whereEqualTo(Constants.RECIPIENT_ID, recipientId)
+            .whereEqualTo(Constants.CREATOR_ID, sharedPreferenceManger.userId)
             .addSnapshotListener { querySnapshot: QuerySnapshot?, error ->
                 Log.e("getting", " gettttingintntingg")
                 if (error != null) {
@@ -48,6 +47,7 @@ class MessageDataSourceImpl @Inject constructor(
                         MessageRecipient(
                             id = it.getString(Constants.ID) ?: "",
                             recipientId = it.getString(Constants.RECIPIENT_ID) ?: "",
+                            creatorId = it.getString("creatorId") ?: "",
                             messageId = it.getString("messageId") ?: "",
                             isRead = (it.get("read") as Long).toInt()
                         )
@@ -58,18 +58,19 @@ class MessageDataSourceImpl @Inject constructor(
                     Log.e("ids", messageIds.toString())
                     val messages = mutableListOf<MessageEntity>()
                     messageIds.forEach { id ->
-                        getMessage(id,object:MessageCallback{
+                        getMessage(id, object : MessageCallback {
                             override fun onMessageReceived(message: MessageEntity?) {
                                 if (message != null) {
                                     messages.add(message)
                                 }
 
-                                if (messages.size == messageIds.size){
+                                if (messages.size == messageIds.size) {
                                     scope.launch {
                                         send(messages)
                                     }
                                 }
                             }
+
                             override fun onError(exception: Exception) {
                                 cancel(message = "Error fetching messages", cause = exception)
                             }
@@ -86,6 +87,7 @@ class MessageDataSourceImpl @Inject constructor(
         val currentUserListener = db
             .collection(Constants.MESSAGE_RECIPIENT_COLLECTION)
             .whereEqualTo(Constants.RECIPIENT_ID, sharedPreferenceManger.userId)
+            .whereEqualTo(Constants.CREATOR_ID, recipientId)
             .addSnapshotListener { querySnapshot: QuerySnapshot?, error ->
                 Log.e("getting", " gettttingintntingg")
                 if (error != null) {
@@ -99,6 +101,7 @@ class MessageDataSourceImpl @Inject constructor(
                             id = it.getString(Constants.ID) ?: "",
                             recipientId = it.getString(Constants.RECIPIENT_ID) ?: "",
                             messageId = it.getString("messageId") ?: "",
+                            creatorId = it.getString("creatorId") ?: "",
                             isRead = (it.get("read") as Long).toInt()
                         )
                     }
@@ -108,18 +111,19 @@ class MessageDataSourceImpl @Inject constructor(
                     Log.e("ids", messageIds.toString())
                     val messages = mutableListOf<MessageEntity>()
                     messageIds.forEach { id ->
-                        getMessage(id,object:MessageCallback{
+                        getMessage(id, object : MessageCallback {
                             override fun onMessageReceived(message: MessageEntity?) {
                                 if (message != null) {
                                     messages.add(message)
                                 }
 
-                                if (messages.size == messageIds.size){
+                                if (messages.size == messageIds.size) {
                                     scope.launch {
                                         send(messages)
                                     }
                                 }
                             }
+
                             override fun onError(exception: Exception) {
                                 cancel(message = "Error fetching messages", cause = exception)
                             }
@@ -152,6 +156,7 @@ class MessageDataSourceImpl @Inject constructor(
                 val messageRecipient = MessageRecipient(
                     recipientId = recipientId,
                     messageId = message.id,
+                    creatorId = sharedPreferenceManger.userId,
                     isRead = 0
                 )
 
@@ -176,7 +181,6 @@ class MessageDataSourceImpl @Inject constructor(
             }
 
         awaitClose {
-
         }
     }
 
@@ -187,6 +191,7 @@ class MessageDataSourceImpl @Inject constructor(
         val messageRecipient = MessageRecipient(
             recipientId = recipientId,
             messageId = message.id,
+            creatorId = sharedPreferenceManger.userId,
             isRead = 0
         )
 
@@ -214,7 +219,7 @@ class MessageDataSourceImpl @Inject constructor(
         fun onError(exception: Exception)
     }
 
-    private fun getMessage(messageId: String, callback: MessageCallback) {
+    fun getMessage(messageId: String, callback: MessageCallback) {
         Log.e("getMessage", "getting a Message")
 
         db.collection(Constants.MESSAGE_COLLECTION)
