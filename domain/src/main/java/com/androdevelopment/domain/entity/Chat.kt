@@ -6,6 +6,6 @@ data class Chat(
     val recipientId:String,
     val recipientName:String,
     val lastMessage:String,
-    val lastMessageDate:OffsetDateTime,
+    val lastMessageDate:OffsetDateTime?,
     val isRead:Boolean
 )

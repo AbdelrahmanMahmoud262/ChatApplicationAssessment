@@ -18,7 +18,7 @@ class HomeRepositoryImpl @Inject constructor(
                 recipientId = chatEntity.recipientId,
                 recipientName = chatEntity.recipientName,
                 lastMessage = chatEntity.lastMessage,
-                lastMessageDate = OffsetDateTime.parse(chatEntity.lastMessageDate),
+                lastMessageDate = if (chatEntity.lastMessageDate.isNullOrBlank()) null else OffsetDateTime.parse(chatEntity.lastMessageDate),
                 isRead = chatEntity.isRead
             )
         }

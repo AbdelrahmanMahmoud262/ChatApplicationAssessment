@@ -114,12 +114,12 @@ fun ChatItem(
 
         Column(
             modifier = Modifier
-                .weight(1f),
+                .weight(2f),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
-                text = chat.lastMessageDate.format(DateTimeFormatter.ofPattern("HH:mm")),
+                text = chat.lastMessageDate?.format(DateTimeFormatter.ofPattern("HH:mm"))?: "Unknown",
             )
 
             Spacer(Modifier.height(8.dp))
