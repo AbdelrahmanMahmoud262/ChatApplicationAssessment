@@ -39,7 +39,6 @@ class MessageDataSourceImpl @Inject constructor(
             .whereEqualTo(Constants.RECIPIENT_ID, recipientId)
             .whereEqualTo(Constants.CREATOR_ID, sharedPreferenceManger.userId)
             .addSnapshotListener { querySnapshot: QuerySnapshot?, error ->
-                Log.e("getting", " gettttingintntingg")
                 if (error != null) {
                     cancel(message = "Error fetching messages", cause = error)
                     return@addSnapshotListener
@@ -47,7 +46,6 @@ class MessageDataSourceImpl @Inject constructor(
 
                 val messagesRecipients = querySnapshot?.documents
                     ?.map {
-                        Log.e("Converting", it.getString("id").toString())
                         MessageRecipient(
                             id = it.getString(Constants.ID) ?: "",
                             recipientId = it.getString(Constants.RECIPIENT_ID) ?: "",
@@ -92,7 +90,6 @@ class MessageDataSourceImpl @Inject constructor(
             .whereEqualTo(Constants.RECIPIENT_ID, sharedPreferenceManger.userId)
             .whereEqualTo(Constants.CREATOR_ID, recipientId)
             .addSnapshotListener { querySnapshot: QuerySnapshot?, error ->
-                Log.e("getting", " gettttingintntingg")
                 if (error != null) {
                     cancel(message = "Error fetching messages", cause = error)
                     return@addSnapshotListener

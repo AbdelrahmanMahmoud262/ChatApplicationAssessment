@@ -15,71 +15,137 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.androdevelopment.chatapplication.ChatApplication
 import com.androdevelopment.chatapplication.presentation.navigation.Screen
-import com.androdevelopment.chatapplication.presentation.testViewModel
-import com.androdevelopment.data.utlis.SharedPreferenceManger
 import com.androdevelopment.domain.entity.Chat
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
-import kotlin.random.Random
 
 @Composable
 fun HomeScreen(
     modifier: Modifier = Modifier,
     state: HomeState,
-    navController: NavController
+    navController: NavController,
 ) {
 
-    val testViewModel = hiltViewModel<testViewModel>()
-    val sharedPreferenceManger = SharedPreferenceManger(ChatApplication.appContext)
+    var showBottomSheet by remember { mutableStateOf(false) }
 
-    LazyColumn (
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White)
-            .then(modifier)
-            .padding(16.dp)
-    ){
+    ) {
 
-        items(state.chats){
-            ChatItem(
-                chat = it,
-                onChatClick = {
-                    navController.navigate("${Screen.Chat.route}/${it.recipientId}")
-                }
-            )
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.White)
+                .then(modifier)
+                .padding(16.dp)
+        ) {
+
+            items(state.chats) {
+                ChatItem(
+                    chat = it,
+                    onChatClick = {
+                        navController.navigate("${Screen.Chat.route}/${it.recipientId}")
+                    }
+                )
+            }
+
         }
 
-        item {
-            Button(
-                onClick = {
-                    testViewModel.sendMessage(
-                        Random.nextInt().toString(),
-                        if (sharedPreferenceManger.userId == testViewModel.user2)testViewModel.user1 else testViewModel.user2
+        FloatingActionButton(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp),
+            onClick = {
+                showBottomSheet = true
+            }
+        ) {
+            Icon(Icons.Rounded.Add, contentDescription = null)
+        }
+    }
+
+    BottomSheet(
+        isBottomSheetOpen = showBottomSheet,
+        onDismiss = {
+            showBottomSheet = false
+        },
+        onChatClick = {
+            navController.navigate("${Screen.Chat.route}/${it.recipientId}")
+        },
+        state = state
+    )
+
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun BottomSheet(
+    modifier: Modifier = Modifier,
+    isBottomSheetOpen: Boolean = true,
+    onDismiss: () -> Unit = {},
+    onChatClick: (Chat) -> Unit = {},
+    state: HomeState,
+) {
+
+    if (isBottomSheetOpen) {
+
+        ModalBottomSheet(
+            onDismissRequest = {
+                onDismiss()
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.75f)
+                .then(modifier)
+        ) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(8.dp)
+            ) {
+                items(state.users) { user ->
+                    ChatItem(
+                        chat = user.let {
+                            Chat(
+                                recipientId = it.id,
+                                recipientName = it.firstName + " " + it.lastName,
+                                lastMessage = "",
+                                lastMessageDate = OffsetDateTime.now(),
+                                isRead = false
+                            )
+                        },
+                        onChatClick = {
+                            onChatClick(it)
+                        }
                     )
                 }
-            ) {
-
-                Text("Send")
             }
         }
-
     }
+
 }
 
 @Preview
@@ -93,7 +159,7 @@ fun ChatItem(
         lastMessageDate = OffsetDateTime.now(),
         isRead = false
     ),
-    onChatClick: () -> Unit = {}
+    onChatClick: (chatItem: Chat) -> Unit = {},
 ) {
 
     Row(
@@ -102,9 +168,9 @@ fun ChatItem(
             .background(Color.White)
             .padding(8.dp)
             .clickable {
-                onChatClick()
+                onChatClick(chat)
             }
-    ){
+    ) {
 
         Column(
             modifier = Modifier
@@ -124,6 +190,8 @@ fun ChatItem(
                 text = chat.lastMessage,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.W400,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
                     .align(Alignment.Start)
             )
@@ -136,7 +204,8 @@ fun ChatItem(
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
-                text = chat.lastMessageDate?.format(DateTimeFormatter.ofPattern("HH:mm"))?: "Unknown",
+                text = chat.lastMessageDate?.format(DateTimeFormatter.ofPattern("HH:mm"))
+                    ?: "Unknown",
             )
 
             Spacer(Modifier.height(8.dp))

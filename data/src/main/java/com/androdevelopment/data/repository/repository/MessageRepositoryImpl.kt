@@ -1,11 +1,13 @@
 package com.androdevelopment.data.repository.repository
 
+import android.util.Log
 import com.androdevelopment.data.remote.entity.MessageEntity
 import com.androdevelopment.data.repository.source.MessageDataSource
 import com.androdevelopment.domain.entity.Message
 import com.androdevelopment.domain.entity.Result
 import com.androdevelopment.domain.repository.MessageRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
 import java.time.OffsetDateTime
@@ -45,7 +47,9 @@ class MessageRepositoryImpl @Inject constructor(
             }
         }
 
-        return merge(recipientFlow, creatorFlow)
+        return combine(recipientFlow,creatorFlow){ recipientMessages, creatorMessages ->
+            (recipientMessages + creatorMessages).sortedBy { it.dateCreated }
+        }
     }
 
     override fun sendMessage(message: Message, recipientId: String): Flow<Result> =

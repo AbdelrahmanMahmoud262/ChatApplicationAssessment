@@ -15,4 +15,6 @@ class UserRepositoryImpl @Inject constructor(
     override fun insertUser(user: User): Result  = dataSource.insertUser(user)
 
     override  fun validateUser(email: String, password: String): Flow<User?> = dataSource.validateUser(email, password)
+
+    override fun getUsers(): Flow<List<User>> = dataSource.getUsers()
 }

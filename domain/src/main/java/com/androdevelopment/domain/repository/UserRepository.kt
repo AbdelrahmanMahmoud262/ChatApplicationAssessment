@@ -9,4 +9,5 @@ interface UserRepository {
     fun insertUser(user: User):Result
 
     fun validateUser(email: String, password: String): Flow<User?>
+    fun getUsers(): Flow<List<User>>
 }

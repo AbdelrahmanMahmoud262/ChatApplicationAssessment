@@ -12,4 +12,6 @@ interface UserDataSource {
 
     fun validateUser(email: String, password: String): Flow<User?>
 
+    fun getUsers():Flow<List<User>>
+
  }

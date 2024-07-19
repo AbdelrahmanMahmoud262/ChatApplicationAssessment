@@ -10,15 +10,16 @@ import com.androdevelopment.data.utlis.SharedPreferenceManger
 import com.androdevelopment.domain.entity.Chat
 import com.androdevelopment.domain.repository.HomeRepository
 import com.androdevelopment.domain.repository.MessageRepository
+import com.androdevelopment.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val sharedPreferenceManger: SharedPreferenceManger,
-    private val messageRepository: MessageRepository,
     private val repository: HomeRepository,
+    private val userRepository: UserRepository,
+    private val sharedPreferenceManger: SharedPreferenceManger
 ) : ViewModel() {
 
     var state by mutableStateOf(HomeState())
@@ -26,6 +27,7 @@ class HomeViewModel @Inject constructor(
 
     init {
         getChats()
+        getUsers()
     }
 
     private fun getChats() {
@@ -33,6 +35,14 @@ class HomeViewModel @Inject constructor(
             repository.getChats().collect{
                 Log.e("homeviewmodel",it.toString())
                 state = state.copy(chats = it)
+            }
+        }
+    }
+
+    private fun getUsers(){
+        viewModelScope.launch {
+            userRepository.getUsers().collect{
+                state = state.copy(users = it.filter { it.id != sharedPreferenceManger.userId })
             }
         }
     }
