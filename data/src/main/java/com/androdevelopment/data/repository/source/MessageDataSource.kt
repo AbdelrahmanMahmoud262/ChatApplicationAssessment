@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.Flow
 
 interface MessageDataSource {
 
-    fun getMessages(recipientId:String): Flow<List<MessageEntity>>
+    fun getMessages(recipientId:String): Pair<Flow<List<MessageEntity>>, Flow<List<MessageEntity>>>
 
     fun sendMessage(message: MessageEntity,recipientId: String): Flow<Result>
 

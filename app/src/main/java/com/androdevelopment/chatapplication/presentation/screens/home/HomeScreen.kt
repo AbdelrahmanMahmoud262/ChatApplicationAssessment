@@ -1,6 +1,7 @@
 package com.androdevelopment.chatapplication.presentation.screens.home
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,12 +22,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
+import com.androdevelopment.chatapplication.ChatApplication
+import com.androdevelopment.chatapplication.presentation.navigation.Screen
 import com.androdevelopment.chatapplication.presentation.testViewModel
+import com.androdevelopment.data.utlis.SharedPreferenceManger
 import com.androdevelopment.domain.entity.Chat
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
@@ -35,10 +41,12 @@ import kotlin.random.Random
 @Composable
 fun HomeScreen(
     modifier: Modifier = Modifier,
-    state: HomeState
+    state: HomeState,
+    navController: NavController
 ) {
 
     val testViewModel = hiltViewModel<testViewModel>()
+    val sharedPreferenceManger = SharedPreferenceManger(ChatApplication.appContext)
 
     LazyColumn (
         modifier = Modifier
@@ -49,7 +57,12 @@ fun HomeScreen(
     ){
 
         items(state.chats){
-            ChatItem(chat = it)
+            ChatItem(
+                chat = it,
+                onChatClick = {
+                    navController.navigate("${Screen.Chat.route}/${it.recipientId}")
+                }
+            )
         }
 
         item {
@@ -57,7 +70,7 @@ fun HomeScreen(
                 onClick = {
                     testViewModel.sendMessage(
                         Random.nextInt().toString(),
-                        testViewModel.user2
+                        if (sharedPreferenceManger.userId == testViewModel.user2)testViewModel.user1 else testViewModel.user2
                     )
                 }
             ) {
@@ -79,7 +92,8 @@ fun ChatItem(
         lastMessage = "Hello, how are you?",
         lastMessageDate = OffsetDateTime.now(),
         isRead = false
-    )
+    ),
+    onChatClick: () -> Unit = {}
 ) {
 
     Row(
@@ -87,6 +101,9 @@ fun ChatItem(
             .fillMaxWidth()
             .background(Color.White)
             .padding(8.dp)
+            .clickable {
+                onChatClick()
+            }
     ){
 
         Column(

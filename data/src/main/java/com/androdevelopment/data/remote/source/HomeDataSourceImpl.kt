@@ -57,7 +57,6 @@ class HomeDataSourceImpl @Inject constructor(
                             isRead = (it.get("read") as Long).toInt()
                         )
                     }
-                    ?.distinctBy { it.creatorId }
                     ?.distinctBy { it.recipientId }
 
                 if (!messagesRecipients.isNullOrEmpty()) {
@@ -106,6 +105,7 @@ class HomeDataSourceImpl @Inject constructor(
 
                 val messagesRecipients = querySnapshot?.documents
                     ?.map {
+                        Log.e("Converting", it.getString("id").toString())
                         MessageRecipient(
                             id = it.getString(Constants.ID) ?: "",
                             recipientId = it.getString(Constants.RECIPIENT_ID) ?: "",
@@ -114,24 +114,43 @@ class HomeDataSourceImpl @Inject constructor(
                             isRead = (it.get("read") as Long).toInt()
                         )
                     }
-                    ?.distinctBy { it.recipientId }
                     ?.distinctBy { it.creatorId }
-                    ?.map { messageRecipient ->
-                        ChatEntity(
-                            recipientId = messageRecipient.recipientId,
-                            recipientName = messageRecipient.recipientId,
-                            lastMessage = messageRecipient.messageId,
-                            lastMessageDate = messageRecipient.messageId,
-                            isRead = messageRecipient.isRead == 1
-                        )
-                    }
 
-                scope.launch {
-                    if (!messagesRecipients.isNullOrEmpty()) {
-                        send(messagesRecipients)
+                if (!messagesRecipients.isNullOrEmpty()) {
+                    scope.launch {
+                        val chatEntities = coroutineScope {
+                            messagesRecipients.map { messageRecipient ->
+                                async {
+                                    val message =
+                                        getMessage(messageRecipient.messageId).firstOrNull()
+
+                                    val user = userDataSource.getUser(messageRecipient.creatorId).firstOrNull()
+
+                                    ChatEntity(
+                                        recipientId = messageRecipient.creatorId,
+                                        recipientName = user?.firstName?: "",
+                                        lastMessage = message?.body?:"",
+                                        lastMessageDate = message?.dateCreated?.let {
+                                            OffsetDateTime.parse(it).format(
+                                                DateTimeFormatter.ISO_DATE_TIME
+                                            )
+                                        },
+                                        isRead = messageRecipient.isRead == 1
+                                    )
+                                }
+                            }.awaitAll()
+                        }
+                        send(chatEntities)
+                    }
+                }else{
+                    scope.launch {
+                        send(emptyList())
                     }
                 }
+
+
             }
+
 
         awaitClose {
 
@@ -162,7 +181,7 @@ class HomeDataSourceImpl @Inject constructor(
                                 subject = it.getString("subject") ?: "",
                                 creatorId = it.getString("creatorId") ?: "",
                                 body = it.getString("body") ?: "",
-                                dateCreated = (it.get("dateCreated") ?: "").toString(),
+                                dateCreated = it.getString("dateCreated") ?: "",
                                 isRead = (it.get("read") as Long).toInt()
                             )
                         )

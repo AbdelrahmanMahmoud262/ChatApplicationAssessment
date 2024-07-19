@@ -64,7 +64,7 @@ class testViewModel @Inject constructor(
 
         viewModelScope.launch {
 
-            sharedPreferenceManger.userId = user1
+//            sharedPreferenceManger.userId = user2
 
             getMessages()
 

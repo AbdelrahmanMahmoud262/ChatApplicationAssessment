@@ -12,10 +12,14 @@ import com.google.firebase.firestore.QuerySnapshot
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -29,7 +33,7 @@ class MessageDataSourceImpl @Inject constructor(
 
     override fun getMessages(
         recipientId: String,
-    ): Flow<List<MessageEntity>> = callbackFlow {
+    ): Pair<Flow<List<MessageEntity>>,Flow<List<MessageEntity>>> = Pair(callbackFlow {
         val recipientListener = db
             .collection(Constants.MESSAGE_RECIPIENT_COLLECTION)
             .whereEqualTo(Constants.RECIPIENT_ID, recipientId)
@@ -54,36 +58,35 @@ class MessageDataSourceImpl @Inject constructor(
                     }
 
                 if (!messagesRecipients.isNullOrEmpty()) {
-                    val messageIds = messagesRecipients.map { it.messageId }
-                    Log.e("ids", messageIds.toString())
-                    val messages = mutableListOf<MessageEntity>()
-                    messageIds.forEach { id ->
-                        getMessage(id, object : MessageCallback {
-                            override fun onMessageReceived(message: MessageEntity?) {
-                                if (message != null) {
-                                    messages.add(message)
-                                }
+                    scopeFlow.launch {
+                        val messageEntities = coroutineScope {
+                            messagesRecipients.map { messageRecipient ->
+                                async {
+                                    val message =
+                                        getMessage(messageRecipient.messageId).firstOrNull()
 
-                                if (messages.size == messageIds.size) {
-                                    scope.launch {
-                                        send(messages)
-                                    }
+                                    message ?: MessageEntity(
+                                        id = "",
+                                        subject = "",
+                                        creatorId = sharedPreferenceManger.userId,
+                                        body = "",
+                                        dateCreated = "",
+                                        isRead = 0
+                                    )
                                 }
-                            }
-
-                            override fun onError(exception: Exception) {
-                                cancel(message = "Error fetching messages", cause = exception)
-                            }
-                        })
+                            }.awaitAll()
+                        }
+                        send(messageEntities)
                     }
-
-                    Log.e("messagesDataSource", messages.toString())
-
-                } else {
-                    Log.e("empty 2222", "ermkfawel;rjkfas;dlf")
                 }
-            }
 
+            }
+        awaitClose {
+            recipientListener.remove()
+            scopeFlow.cancel()
+        }
+    }
+,callbackFlow {
         val currentUserListener = db
             .collection(Constants.MESSAGE_RECIPIENT_COLLECTION)
             .whereEqualTo(Constants.RECIPIENT_ID, sharedPreferenceManger.userId)
@@ -107,42 +110,37 @@ class MessageDataSourceImpl @Inject constructor(
                     }
 
                 if (!messagesRecipients.isNullOrEmpty()) {
-                    val messageIds = messagesRecipients.map { it.messageId }
-                    Log.e("ids", messageIds.toString())
-                    val messages = mutableListOf<MessageEntity>()
-                    messageIds.forEach { id ->
-                        getMessage(id, object : MessageCallback {
-                            override fun onMessageReceived(message: MessageEntity?) {
-                                if (message != null) {
-                                    messages.add(message)
-                                }
+                    scope.launch {
+                        val messageEntities = coroutineScope {
+                            messagesRecipients.map { messageRecipient ->
+                                async {
+                                    val message =
+                                        getMessage(messageRecipient.messageId).firstOrNull()
 
-                                if (messages.size == messageIds.size) {
-                                    scope.launch {
-                                        send(messages)
-                                    }
+                                    message ?: MessageEntity(
+                                        id = "",
+                                        subject = "",
+                                        creatorId = recipientId,
+                                        body = "",
+                                        dateCreated = "",
+                                        isRead = 0
+                                    )
                                 }
-                            }
-
-                            override fun onError(exception: Exception) {
-                                cancel(message = "Error fetching messages", cause = exception)
-                            }
-                        })
+                            }.awaitAll()
+                        }
+                        send(messageEntities)
                     }
-                } else {
-                    Log.e("emtpy", "empty")
                 }
             }
 
         awaitClose {
 
-            recipientListener.remove()
             currentUserListener.remove()
 
             scope.cancel()
 
         }
-    }
+    })
 
     override fun sendMessage(
         message: MessageEntity,
@@ -219,7 +217,7 @@ class MessageDataSourceImpl @Inject constructor(
         fun onError(exception: Exception)
     }
 
-    fun getMessage(messageId: String, callback: MessageCallback) {
+    fun getMessage(messageId: String) = callbackFlow {
         Log.e("getMessage", "getting a Message")
 
         db.collection(Constants.MESSAGE_COLLECTION)
@@ -228,23 +226,31 @@ class MessageDataSourceImpl @Inject constructor(
             .get()
             .addOnSuccessListener { querySnapshot ->
                 Log.e("success", "success $messageId")
-                val item = querySnapshot?.documents?.mapNotNull {
+                querySnapshot?.documents?.firstNotNullOfOrNull {
                     Log.e("converting", "converting ${it.get("id")}")
-                    MessageEntity(
-                        id = it.getString(Constants.ID) ?: "",
-                        subject = it.getString("subject") ?: "",
-                        creatorId = it.getString("creatorId") ?: "",
-                        body = it.getString("body") ?: "",
-                        dateCreated = (it.get("dateCreated") ?: "").toString(),
-                        isRead = (it.get("read") as Long).toInt()
-                    )
-                }?.firstOrNull()
-                callback.onMessageReceived(item) // Notify the callback with the result
+                    scope.launch {
+                        send(
+                            MessageEntity(
+                                id = it.getString(Constants.ID) ?: "",
+                                subject = it.getString("subject") ?: "",
+                                creatorId = it.getString("creatorId") ?: "",
+                                body = it.getString("body") ?: "",
+                                dateCreated = it.getString("dateCreated") ?: "",
+                                isRead = (it.get("read") as Long).toInt()
+                            )
+                        )
+                    }
+                }
+//                callback.onMessageReceived(item) // Notify the callback with the result
             }
             .addOnFailureListener { exception ->
                 Log.e("error", "error getting message $messageId", exception)
-                callback.onError(exception) // Notify the callback with the error
+//                callback.onError(exception) // Notify the callback with the error
             }
+
+        awaitClose {
+
+        }
     }
 
 }

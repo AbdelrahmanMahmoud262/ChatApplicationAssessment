@@ -10,5 +10,6 @@ interface UserDataSource {
 
     fun getUser(id: String): Flow<User>
 
-    fun checkUser(user:User):Result
-}
+    fun validateUser(email: String, password: String): Flow<User?>
+
+ }

@@ -7,6 +7,7 @@ import com.androdevelopment.domain.entity.User
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.awaitClose
@@ -42,12 +43,16 @@ class UserDataSourceImpl @Inject constructor(
                         id = it.getString(Constants.ID) ?: "",
                         firstName = it.getString("firstName") ?: "",
                         lastName = it.getString("lastName") ?: "",
+                        email = it.getString("email") ?: "",
+                        password = it.getString("password") ?: "",
                         isActive = it.getBoolean("isActive") == true
                     )
                 } ?:  User(
                 id = "",
                 firstName = "Unknown",
                 lastName = "Unknown",
+                email = "Unknown",
+                password = "Unknown",
                 isActive = false
             )
         }
@@ -59,7 +64,24 @@ class UserDataSourceImpl @Inject constructor(
         }
     }
 
-    override fun checkUser(user: User): Result {
-        TODO("Not yet implemented")
+    override fun validateUser(email: String, password: String): Flow<User?> = channelFlow{
+        db.collection(Constants.USER_COLLECTION)
+            .whereEqualTo(Constants.EMAIL,email)
+            .whereEqualTo(Constants.PASSWORD,password)
+            .limit(1)
+            .get()
+            .await()
+            .documents.firstOrNull()?.let {
+                send(
+                    User(
+                        id = it.getString(Constants.ID) ?: "",
+                        firstName = it.getString("firstName") ?: "",
+                        lastName = it.getString("lastName") ?: "",
+                        email = it.getString("email") ?: "",
+                        password = it.getString("password") ?: "",
+                        isActive = it.getBoolean("isActive") == true
+                    )
+                )
+            }
     }
 }
